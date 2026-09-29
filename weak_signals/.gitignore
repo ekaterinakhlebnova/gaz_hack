@@ -1,0 +1,9 @@
+.venv/
+.idea/
+.env
+__pycache__/
+logs/
+data/app.db
+data/http_cache.sqlite
+*.pdf
+*.zip

@@ -1,0 +1,12 @@
+pandas==3.0.6
+openpyxl==3.1.5
+scikit-learn
+requests==2.34.2
+requests-cache==1.3.3
+feedparser==6.0.14
+gigachat==0.2.3
+SQLAlchemy==2.1.1
+psycopg2-binary
+fastapi==0.141.1
+uvicorn==0.54.0
+python-dotenv
