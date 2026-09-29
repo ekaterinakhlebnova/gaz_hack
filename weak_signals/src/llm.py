@@ -25,8 +25,15 @@ client = GigaChat(
 slots = threading.Semaphore(int(os.getenv("GIGACHAT_CONCURRENCY", "1")))
 
 
-def ask_json(task, prompt):
-    with slots:
-        text = client.chat(prompt).choices[0].message.content
-    log.info("model=%s task=%s\nPROMPT: %s\nANSWER: %s\n", MODEL, task, prompt[:500], text)
-    return json.loads(text[text.find("{"): text.rfind("}") + 1])
+def ask_json(task, prompt, attempts=2):
+    for _ in range(attempts):
+        with slots:
+            text = client.chat(prompt).choices[0].message.content
+        log.info("model=%s task=%s\nPROMPT: %s\nANSWER: %s\n", MODEL, task, prompt[:500], text)
+        try:
+            answer = json.loads(text[text.find("{"): text.rfind("}") + 1])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(answer, dict):
+            return answer
+    raise ValueError(f"GigaChat не вернул JSON-объект ({task}), попыток: {attempts}")

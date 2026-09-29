@@ -89,9 +89,14 @@ def measure(cand):
 def write_report(c, query):
     docs_text = "\n".join(f"{i + 1}. [{d['type']}, {d['date']}] {d['title']}. {d['abstract'][:400]}"
                           for i, d in enumerate(c["sources"]))
-    rep = llm.ask_json("report", REPORT_PROMPT.format(
-        name=c["matched_name"], query=query, docs=docs_text, reasons="; ".join(c["reasons"]), total=c["total"],
-        last=c["last"], prev=c["prev"], growth=c["growth"], novelty=c["novelty"]))
+    try:
+        rep = llm.ask_json("report", REPORT_PROMPT.format(
+            name=c["matched_name"], query=query, docs=docs_text, reasons="; ".join(c["reasons"]), total=c["total"],
+            last=c["last"], prev=c["prev"], growth=c["growth"], novelty=c["novelty"]))
+    except ValueError as e:
+        # сигнал остаётся в выдаче с метриками, но без текстового отчёта
+        print(f"отчёт по «{c['name_ru']}» не получен: {e}")
+        rep = {}
     for d, s in zip(c["sources"], rep.get("summaries") or []):
         d["summary_ru"] = s
     c.update({k: rep.get(k, "") for k in REPORT_FIELDS})
@@ -147,7 +152,9 @@ def run(query):
 if __name__ == "__main__":
     import json
     import sys
+    # при перенаправлении вывода Windows берёт cp1251, где нет «→»
+    sys.stdout.reconfigure(encoding="utf-8")
     result = run(" ".join(sys.argv[1:]))
+    json.dump(result, open("reports/last_run.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     for s in result["signals"]:
         print(f"{s['confidence']:.0%}  {s['name_ru']}  |  " + "; ".join(s["predictors"][:2]))
-    json.dump(result, open("reports/last_run.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)

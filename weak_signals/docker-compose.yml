@@ -7,6 +7,11 @@ services:
       POSTGRES_DB: signals
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signals -d signals"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
 
   app:
     build: .
@@ -16,7 +21,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: on-failure
 
 volumes:

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from src import db, pipeline
@@ -8,6 +8,13 @@ app = FastAPI(title="Слабые сигналы", description="Поиск за�
 
 class SearchRequest(BaseModel):
     query: str
+
+
+def load_run(run_id):
+    r = db.get_run(run_id)
+    if r is None:
+        raise HTTPException(404, "Запуск не найден")
+    return r
 
 
 def signal_card(s):
@@ -60,13 +67,16 @@ def runs():
 @app.get("/runs/{run_id}")
 def run(run_id: int):
     """Статистика, ТОП-15 и исключённые кандидаты."""
-    return summary(run_id, db.get_run(run_id))
+    return summary(run_id, load_run(run_id))
 
 
 @app.get("/runs/{run_id}/signals/{n}")
 def insight(run_id: int, n: int):
     """Отчёт по сигналу №n (с 1)."""
-    s = db.get_run(run_id)["signals"][n - 1]
+    signals = load_run(run_id)["signals"]
+    if not 1 <= n <= len(signals):
+        raise HTTPException(404, f"Сигнал не найден, в запуске их {len(signals)}")
+    s = signals[n - 1]
     return {
         **signal_card(s),
         "description": s["description"],
@@ -95,7 +105,7 @@ def candidates(run_id: int):
     """Все кандидаты с признаками."""
     keys = ("name_ru", "name_en", "matched_name", "is_signal", "confidence", "points", "stage", "trend",
             "total", "last", "prev", "growth", "novelty", "hn", "reasons")
-    return [{k: c[k] for k in keys} for c in db.get_run(run_id)["candidates"]]
+    return [{k: c[k] for k in keys} for c in load_run(run_id)["candidates"]]
 
 
 @app.get("/evaluation")

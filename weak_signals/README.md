@@ -6,27 +6,45 @@
 
 ## Запуск
 
-Нужны ключ GigaChat и бесплатный ключ OpenAlex (без него дневной лимит заканчивается за пару запросов).
+Для поиска нужны ключ GigaChat и бесплатный ключ OpenAlex. Оценка на датасете работает без ключей.
 
 ```bash
-cp .env.example .env    # вписать ключи
+cp .env.example .env    # вписать ключи (в cmd: copy .env.example .env)
+```
+
+| Переменная | Что это |
+|---|---|
+| `GIGACHAT_CREDENTIALS` | ключ авторизации (Authorization key) из кабинета GigaChat API на developers.sber.ru |
+| `GIGACHAT_SCOPE` | `GIGACHAT_API_PERS` для физлиц, `GIGACHAT_API_B2B` / `GIGACHAT_API_CORP` для юрлиц |
+| `GIGACHAT_MODEL` | модель, по умолчанию `GigaChat-2-Max` |
+| `GIGACHAT_CONCURRENCY` | сколько запросов к GigaChat одновременно; на личном тарифе 1, иначе API отвечает 429 |
+| `OPENALEX_API_KEY` | бесплатный ключ: https://openalex.org/settings/api (без него дневной лимит заканчивается за пару запросов) |
+| `OPENALEX_MAILTO` | ваша почта |
+
+Docker:
+
+```bash
 docker compose up --build
 ```
 
 API: http://localhost:8000/docs
 
-Без Docker:
+Без Docker нужен Python 3.11+. Все команды — из корня проекта (папки с этим README): пути к `.env`, `data/`, `reports/` и `logs/` относительные.
 
 ```bash
+python -m venv .venv
+.venv\Scripts\activate                           # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
-python -m src.evaluate                           # метрики на датасете
-python -m src.pipeline "технологии в ИИ"         # поиск из консоли
+python -m src.evaluate                           # метрики на датасете → reports/metrics.md
+python -m src.pipeline "технологии в ИИ"         # поиск из консоли → reports/last_run.json
 uvicorn api:app                                  # API, SQLite в data/app.db
 ```
 
+Запросы и ответы GigaChat пишутся в `logs/llm.log`, ответы arXiv/OpenAlex/Hacker News кэшируются на сутки в `data/http_cache.sqlite`.
+
 ## API
 
-- `POST /search` `{"query": "..."}` — поиск, 1–3 минуты
+- `POST /search` `{"query": "..."}` — поиск, 2–5 минут (отчёты GigaChat пишутся по одному)
 - `GET /runs` — история запросов
 - `GET /runs/{id}` — ТОП-15 и исключённые кандидаты
 - `GET /runs/{id}/signals/{n}` — отчёт по сигналу

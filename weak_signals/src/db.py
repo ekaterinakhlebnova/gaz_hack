@@ -29,4 +29,5 @@ def list_runs():
 
 def get_run(run_id):
     with engine.connect() as con:
-        return json.loads(con.execute(select(runs.c.result).where(runs.c.id == run_id)).scalar())
+        result = con.execute(select(runs.c.result).where(runs.c.id == run_id)).scalar()
+    return json.loads(result) if result else None
