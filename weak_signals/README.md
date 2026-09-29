@@ -20,6 +20,8 @@ cp .env.example .env    # вписать ключи (в cmd: copy .env.example .
 | `GIGACHAT_CONCURRENCY` | сколько запросов к GigaChat одновременно; на личном тарифе 1, иначе API отвечает 429 |
 | `OPENALEX_API_KEY` | бесплатный ключ: https://openalex.org/settings/api (без него дневной лимит заканчивается за пару запросов) |
 | `OPENALEX_MAILTO` | ваша почта |
+| `TELEGRAM_BOT_TOKEN` | токен Telegram-бота от @BotFather; пусто — бот не запускается |
+| `TELEGRAM_ALLOWED_USERS` | id пользователей Telegram через запятую, кому доступен бот; пусто — всем |
 
 Docker:
 
@@ -38,6 +40,7 @@ pip install -r requirements.txt
 python -m src.evaluate                           # метрики на датасете → reports/metrics.md
 python -m src.pipeline "технологии в ИИ"         # поиск из консоли → reports/last_run.json
 uvicorn api:app                                  # API, SQLite в data/app.db
+python bot.py                                    # Telegram-бот
 ```
 
 Запросы и ответы GigaChat пишутся в `logs/llm.log`, ответы arXiv/OpenAlex/Hacker News кэшируются на сутки в `data/http_cache.sqlite`.
@@ -51,6 +54,17 @@ uvicorn api:app                                  # API, SQLite в data/app.db
 - `GET /runs/{id}/candidates` — все кандидаты с признаками
 - `GET /evaluation` — оценка модели
 
+## Telegram-бот
+
+1. В Telegram написать @BotFather команду `/newbot`, придумать имя — он пришлёт токен.
+2. Вписать токен в `TELEGRAM_BOT_TOKEN` в `.env`.
+3. Запустить `python bot.py` (в Docker бот стартует сам вместе с API).
+
+Боту пишут направление текстом («перспективные решения в финтехе»), через 2–5 минут он присылает ТОП слабых
+сигналов. Запуски из бота сохраняются в ту же базу, номер запуска в ответе открывается в API: `GET /runs/{id}`.
+Поиск тратит токены GigaChat, поэтому лучше ограничить доступ через `TELEGRAM_ALLOWED_USERS`: бот отвечает
+чужим пользователям «Нет доступа» и показывает их id.
+
 ## Код
 
 - `src/scoring.py` — модель: стадия + тренд
@@ -60,3 +74,4 @@ uvicorn api:app                                  # API, SQLite в data/app.db
 - `src/pipeline.py` — запрос → ТОП-15
 - `src/db.py` — хранение запусков
 - `api.py` — FastAPI
+- `bot.py` — Telegram-бот
