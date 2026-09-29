@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import threading
 
 from gigachat import GigaChat
 
@@ -17,10 +18,15 @@ client = GigaChat(
     model=MODEL,
     verify_ssl_certs=False,
     timeout=180,
+    max_retries=5,
+    retry_backoff_factor=2,
 )
+# на личном тарифе GigaChat разрешён один запрос одновременно, лишние получают 429
+slots = threading.Semaphore(int(os.getenv("GIGACHAT_CONCURRENCY", "1")))
 
 
 def ask_json(task, prompt):
-    text = client.chat(prompt).choices[0].message.content
+    with slots:
+        text = client.chat(prompt).choices[0].message.content
     log.info("model=%s task=%s\nPROMPT: %s\nANSWER: %s\n", MODEL, task, prompt[:500], text)
     return json.loads(text[text.find("{"): text.rfind("}") + 1])

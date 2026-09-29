@@ -98,7 +98,7 @@ def hn_search(phrase, since_days=365):
     r = session.get("https://hn.algolia.com/api/v1/search", params=params, timeout=60).json()
     top = [{
         "title": h["title"],
-        "url": h["url"] or f"https://news.ycombinator.com/item?id={h['objectID']}",
+        "url": h.get("url") or f"https://news.ycombinator.com/item?id={h['objectID']}",
         "date": h["created_at"][:10],
         "abstract": "",
         "type": "Hacker News",

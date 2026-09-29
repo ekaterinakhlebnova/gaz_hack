@@ -1,6 +1,8 @@
 import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 
+import requests
+
 from src import llm, sources
 from src.scoring import score, stage_from_metrics, trend_from_metrics
 
@@ -41,11 +43,22 @@ REPORT_FIELDS = ("description", "advantage", "case", "why", "reports")
 
 
 def collect_docs(terms):
-    docs = []
+    calls = []
     for t in terms["en"]:
-        docs += sources.arxiv_search(t, 40)
-        docs += sources.openalex_search(t, 15)
-    docs += sources.openalex_search(terms["ru"], 15, lang="ru")
+        calls += [(sources.arxiv_search, t, {"n": 40}), (sources.openalex_search, t, {"n": 15})]
+    calls.append((sources.openalex_search, terms["ru"], {"n": 15, "lang": "ru"}))
+    docs, failed = [], set()
+    for search, q, kwargs in calls:
+        if search in failed:
+            continue
+        try:
+            docs += search(q, **kwargs)
+        except requests.RequestException as e:
+            # недоступный источник (например, 429 от arXiv) пропускаем до конца запуска
+            print(f"{search.__name__} недоступен, пропускаю: {e}")
+            failed.add(search)
+    if not docs:
+        raise RuntimeError("ни один источник не ответил")
     return list({d["url"]: d for d in docs}.values())
 
 
